@@ -19,8 +19,16 @@ clean_host_keys() {
     return
   fi
   shopt -u nocasematch
-  ssh-keygen -R "$REMOTEHOST"
-  ssh-keyscan -H "$REMOTEHOST" >> ~/.ssh/known_hosts
+  ssh-keygen -R "$REMOTEHOST" &>/dev/null
+  ssh-keyscan -H "$REMOTEHOST" >> ~/.ssh/known_hosts 2>/dev/null
+}
+
+# Attempt to log in with the SSH key to see if transfer is required
+test_login() {
+  ssh -o preferredauthentications=publickey -q $REMOTEHOST : &>/dev/null
+  # If that didn't work, we'll need to transfer the keys
+  [[ $? -ne 0 ]] && return
+  TRANSFER_KEY_REQUIRED=false
 }
 
 # Open and parse the configuration file
@@ -35,6 +43,9 @@ read_config() {
 
 # Try logging in to the remote host with each of the preconfigured passwords and transfer the default ssh key
 transfer_key() {
+  # If it was determined earlier that the key transfer is not required, then don't do it
+  [[ $TRANSFER_KEY_REQUIRED =~ "false" ]] && return
+  # Loop over all predefined passwords
   for p in "${PAVEWAY_PASSWORDS[@]}"; do
     sshpass -p "$p" ssh-copy-id -f "$REMOTEHOST"  -o StrictHostKeyChecking=no && return
   done
@@ -46,13 +57,17 @@ transfer_key() {
 transfer_files() {
   # Check if any files need to be transfered at all
   [[ -z "$PAVEWAY_XFER_FILES" ]] && return
+  # Create the bin folder on the remote host (if needed) and list the contents
+  REMOTE_FILES=$(ssh "$REMOTEHOST" 'mkdir -p bin;ls bin' 2>/dev/null)
   for f in "${PAVEWAY_XFER_FILES[@]}"; do
+      # Don't sync it if it's already there
+      echo "$REMOTE_FILES" | grep -qP '^'"$f"'$' && continue
       # Check if the specified file exists in $PATH using which
       full_f_path=$(which "$f" 2>/dev/null)
       # Verify the result is an actual path, and not an alias
       echo "$full_f_path" | grep -qP '^/'
       [[ $? -eq 0 ]] || fail "Can't find file $f in \$PATH, so it can't be transferred."
-      rsync -qav "$full_f_path" "${REMOTEHOST}:/bin/"
+      rsync -qav "$full_f_path" "${REMOTEHOST}:~/bin/"
   done
 }
 
@@ -67,10 +82,12 @@ start_ssh() {
   ssh "$REMOTEHOST"
 }
 
+# Main program logic
 [[ $# == 0 ]] && usage
 REMOTEHOST="$1"
 read_config
 clean_host_keys
+test_login
 transfer_key
 transfer_files
 start_ssh
