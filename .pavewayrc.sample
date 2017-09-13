@@ -13,3 +13,6 @@ PAVEWAY_PASSWORDS=('s3cr3t' 'root' 'toor')
 # This flag toggles whether or not paveway should start an ssh session
 # after transfering keys and binaries.
 #PAVEWAY_SSH=true
+
+# This flag toggles whether or not paveway should clear and replace host keys.
+#PAVEWAY_CLEAN_HOST_KEYS=true

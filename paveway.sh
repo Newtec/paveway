@@ -13,6 +13,12 @@ usage() {
 
 # Remove any previously recorded host key for this host, and save the current one to the known_hosts file
 clean_host_keys() {
+  # case insensitive matching
+  shopt -s nocasematch
+  if [[ $PAVEWAY_CLEAN_HOST_KEYS =~ "false" ]] || [[ $PAVEWAY_CLEAN_HOST_KEYS == "0" ]] ; then
+    return
+  fi
+  shopt -u nocasematch
   ssh-keygen -R "$REMOTEHOST"
   ssh-keyscan -H "$REMOTEHOST" >> ~/.ssh/known_hosts
 }
