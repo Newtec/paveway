@@ -19,8 +19,8 @@ clean_host_keys() {
     return
   fi
   shopt -u nocasematch
-  ssh-keygen -R "$REMOTEHOST"
-  ssh-keyscan -H "$REMOTEHOST" >> ~/.ssh/known_hosts
+  ssh-keygen -R "$REMOTEHOST" &>/dev/null
+  ssh-keyscan -H "$REMOTEHOST" >> ~/.ssh/known_hosts 2>/dev/null
 }
 
 # Attempt to log in with the SSH key to see if transfer is required
@@ -57,13 +57,17 @@ transfer_key() {
 transfer_files() {
   # Check if any files need to be transfered at all
   [[ -z "$PAVEWAY_XFER_FILES" ]] && return
+  # Create the bin folder on the remote host (if needed) and list the contents
+  REMOTE_FILES=$(ssh "$REMOTEHOST" 'mkdir -p bin;ls bin' 2>/dev/null)
   for f in "${PAVEWAY_XFER_FILES[@]}"; do
+      # Don't sync it if it's already there
+      echo "$REMOTE_FILES" | grep -qP '^'"$f"'$' && continue
       # Check if the specified file exists in $PATH using which
       full_f_path=$(which "$f" 2>/dev/null)
       # Verify the result is an actual path, and not an alias
       echo "$full_f_path" | grep -qP '^/'
       [[ $? -eq 0 ]] || fail "Can't find file $f in \$PATH, so it can't be transferred."
-      rsync -qav "$full_f_path" "${REMOTEHOST}:/bin/"
+      rsync -qav "$full_f_path" "${REMOTEHOST}:~/bin/"
   done
 }
 
