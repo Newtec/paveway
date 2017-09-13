@@ -23,6 +23,14 @@ clean_host_keys() {
   ssh-keyscan -H "$REMOTEHOST" >> ~/.ssh/known_hosts
 }
 
+# Attempt to log in with the SSH key to see if transfer is required
+test_login() {
+  ssh -o preferredauthentications=publickey -q $REMOTEHOST : &>/dev/null
+  # If that didn't work, we'll need to transfer the keys
+  [[ $? -ne 0 ]] && return
+  TRANSFER_KEY_REQUIRED=false
+}
+
 # Open and parse the configuration file
 read_config() {
   CONFIG_FILE="${HOME}/.pavewayrc"
@@ -35,6 +43,9 @@ read_config() {
 
 # Try logging in to the remote host with each of the preconfigured passwords and transfer the default ssh key
 transfer_key() {
+  # If it was determined earlier that the key transfer is not required, then don't do it
+  [[ $TRANSFER_KEY_REQUIRED =~ "false" ]] && return
+  # Loop over all predefined passwords
   for p in "${PAVEWAY_PASSWORDS[@]}"; do
     sshpass -p "$p" ssh-copy-id -f "$REMOTEHOST"  -o StrictHostKeyChecking=no && return
   done
@@ -67,10 +78,12 @@ start_ssh() {
   ssh "$REMOTEHOST"
 }
 
+# Main program logic
 [[ $# == 0 ]] && usage
 REMOTEHOST="$1"
 read_config
 clean_host_keys
+test_login
 transfer_key
 transfer_files
 start_ssh
