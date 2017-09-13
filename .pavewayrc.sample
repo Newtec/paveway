@@ -4,3 +4,12 @@
 
 # The list of passwords that paveway should try to use
 PAVEWAY_PASSWORDS=('s3cr3t' 'root' 'toor')
+
+# Binaries or scripts that should be copied from this host to the
+# remote host. A typical example would be rmate.
+# This works with files that are in $PATH on the local machine.
+#PAVEWAY_XFER_FILES=('rmate')
+
+# This flag toggles whether or not paveway should start an ssh session
+# after transfering keys and binaries.
+#PAVEWAY_SSH=true
