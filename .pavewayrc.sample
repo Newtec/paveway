@@ -1,0 +1,6 @@
+##############################
+# Paveway configuration file #
+##############################
+
+# The list of passwords that paveway should try to use
+PAVEWAY_PASSWORDS=('s3cr3t' 'root' 'toor')
