@@ -39,8 +39,8 @@ transfer_key() {
 # Transfer files to the remote host
 transfer_files() {
   # Check if any files need to be transfered at all
-  [[ -z "$XFER_FILES" ]] && return
-  for f in "${XFER_FILES[@]}"; do
+  [[ -z "$PAVEWAY_XFER_FILES" ]] && return
+  for f in "${PAVEWAY_XFER_FILES[@]}"; do
       # Check if the specified file exists in $PATH using which
       full_f_path=$(which "$f" 2>/dev/null)
       # Verify the result is an actual path, and not an alias
@@ -50,10 +50,21 @@ transfer_files() {
   done
 }
 
+# Log in with SSH, unless $PAVEWAY_SSH disallows it.
+start_ssh() {
+  # case insensitive matching
+  shopt -s nocasematch
+  if [[ $PAVEWAY_SSH =~ "false" ]] || [[ $PAVEWAY_SSH == "0" ]] ; then
+    return
+  fi
+  shopt -u nocasematch
+  ssh "$REMOTEHOST"
+}
+
 [[ $# == 0 ]] && usage
 REMOTEHOST="$1"
 read_config
 clean_host_keys
 transfer_key
 transfer_files
-ssh "$REMOTEHOST"
+start_ssh
